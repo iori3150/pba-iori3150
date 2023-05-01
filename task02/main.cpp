@@ -56,13 +56,15 @@ void collide_particle_ball(
   //             no friction. You do not need to change the positions.
 
   // comment out the line below
-  p.velo -= 2.f * (p.velo - ball_velo).dot(plane_norm) * plane_norm;
+  // p.velo -= 2.f * (p.velo - ball_velo).dot(plane_norm) * plane_norm;
 
   // write a few lines of code to compute the velocity of ball and particle
   // please uncomment the lines below
-  // const Eigen::Vector2f impulse =
-  // p.velo +=
-  // ball_velo +=
+  const Eigen::Vector2f impulse // from particle to ball
+    = -2.0 * ((particle_mass * ball_mass) / (particle_mass + ball_mass)) 
+      * (ball_velo - p.velo).dot(plane_norm) * plane_norm;
+  p.velo += -impulse / particle_mass;
+  ball_velo += impulse / ball_mass;
 }
 
 /**
@@ -84,6 +86,10 @@ void collision_circle_plane(
   pos -= height * 2 * plane_nrm;
   const float velo_perp = velo.dot(plane_nrm);
   velo -= 2.f * velo_perp * plane_nrm;
+}
+
+float cal_energy(const float &mass, const Eigen::Vector2f &velo){
+  return mass * velo.norm() * velo.norm() / 2.0;
 }
 
 int main() {
@@ -118,11 +124,15 @@ int main() {
   const float particle_mass = 1.0f;
 
   float dt = 0.01f;
+  float energy = 0.0;
+  float energy_before, energy_diff;
 
   while (!::glfwWindowShouldClose(window)) {
     pba::default_window_2d(window);
 
     if (trajectory.size() < 3000) {
+      energy_before = energy;
+      energy = 0.0;
       ball_pos += ball_velo * dt; // step time for ball
       // collision between ball and the walls
       collision_circle_plane(ball_pos, ball_velo, ball_rad, {-box_size * 0.5f, 0.f}, {+1.f, 0.f}); // left wall
@@ -138,7 +148,14 @@ int main() {
         collision_circle_plane(p.pos, p.velo, 0.f, {0.f, +box_size * 0.5f}, {0.f, -1.f}); // top wall
         collide_particle_ball(p, particle_mass,
                               ball_pos, ball_velo, ball_mass, ball_rad);
+        energy += cal_energy(particle_mass, p.velo); // check if the energy is correclty conserved 
       }
+      energy += cal_energy(ball_mass, ball_velo);
+      energy_diff = energy - energy_before;
+      std::cout << "timestep=" << trajectory.size() << "     " 
+                << "energy=" << energy << "     "
+                << "energy diff from last timestep=" << energy_diff << std::endl;
+      if(abs(energy_diff) > energy * 1.0e-6) std::cout << "ERROR: Energy is not conserved!" << std::endl;
       trajectory.push_back(ball_pos);
     }
 

@@ -85,9 +85,12 @@ void wdw_volume_tri_origin(
   w = 1./6.*node2xyz[0].dot(node2xyz[1].cross(node2xyz[2]));
   // ------------------------------
   // Write some code below to compute differentiation. Keep it simple and understandable
-  // dw[0] =
-  // dw[1] =
-  // dw[2] =
+  Eigen::Vector3d a = node2xyz[0];
+  Eigen::Vector3d b = node2xyz[1];
+  Eigen::Vector3d c = node2xyz[2];
+  dw[0] = 1./6. * b.cross(c);
+  dw[1] = 1./6. * c.cross(a);
+  dw[2] = 1./6. * a.cross(b);
 }
 
 void inflate(
@@ -153,10 +156,14 @@ void inflate(
     for (unsigned int inode = 0; inode < 3; ++inode) {
       for (unsigned int idim = 0; idim < 3; ++idim) {
         // write some code including `dw` and `lambda`
+        ddW(node2vtx[inode] * 3 + idim, num_vtx * 3) -= dw[inode](idim);
+        ddW(num_vtx * 3, node2vtx[inode] * 3 + idim) -= dw[inode](idim);
+        dW(node2vtx[inode] * 3 + idim) -= lambda * dw[inode](idim);
       }
     }
   }
   // Do not forget to write one line of code here
+  dW(num_vtx * 3) = -(volume - volume_trg);
   // -------------------------------------------------
   // Do not change below
   // damping for stable convergence
